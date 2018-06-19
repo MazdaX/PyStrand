@@ -3,7 +3,8 @@ Python scripts for changing strand orientation of a VCF file (non-Illumina forma
 1. Complementer (complement.py) will swap the VCF strand based on it self.
 2. Conditional Complementer (conditional_comeplement.py) will swap strand to match another vcf file. (UNDER DEVELOPMENT)
 
-NB. This script only works for BiAllelic SNVs (for INDEL or multi allelic might need adjustment) \n
+NB. This script only works for BiAllelic SNVs (for INDEL or multi allelic might need adjustment)
+
 NB. Feed the files to the script in an increasing order of VCF length. (small match to large)
 
 
