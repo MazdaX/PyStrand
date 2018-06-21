@@ -10,7 +10,7 @@ import os
 import vcf
 import vcf.utils
 import pandas as pd
-import itertools as it
+
 from Bio.Seq import Seq
 
 """Parsing the vcf files using sys.argv
@@ -39,39 +39,43 @@ def read_vcf(tally):
         lines = [l for l in f if not l.startswith('##')]
     return pd.read_table(
         io.StringIO(str.join(os.linesep, lines)),
-        dtype={'#CHROM': str, 'POS': int, 'ID': str}
-        ).filter({'#CHROM','POS','ID'}).rename(columns={'#CHROM':'CHROM'})
+        dtype={'#CHROM': str,
+               'POS': int,
+               'ID': str,
+               'REF' : str,
+               'ALT' : str}
+        ).filter({'#CHROM','POS','ID','REF','ALT'}).rename(columns={'#CHROM':'CHROM'})
 
 """ Creating a merger between the two files to match variants (concordant)
 """
 
 d1 = read_vcf(1)
 d2 = read_vcf(2)
-d12 = pd.merge(d1,d2,how='inner',on=['CHROM','POS','ID'])
-#d12_set = d12.loc[:,['CHROM','POS']]
-d12_set = tuple(d12.loc[:,['CHROM','POS']])
+d12 = pd.merge(d1[['CHROM','POS','ID']],
+               d2,
+               how='inner',
+               on=['CHROM','POS','ID'],
+               sort=False)
+d12 = d12.set_index('ID')
+
+#print("The SNVs in concordance w/ and w/o different STRAND GT:\n")
+#print(d12.index)
+
 
 """ Using concordant hits to flip allele (swap strand) for both REF an ALT
 """
 
-for (record1,record2) in zip(IN_VCF1,IN_VCF2):
-    #Casting Tally as list (tupple) for finding hits
-    tally = tuple([record1.CHROM, record1.POS])
-    #hit = [list(filter(lambda x: x in tally, sublist)) for sublist in d12_set]
-    #bool(set(tally).intersection(d12_set))
-    if (bool(set(tally).intersection(d12_set))):
-        if(record1.REF != record2.REF):
+for record1 in IN_VCF1:
+    if (str(record1.ID) in d12.index.tolist()):
+        if (str(record1.REF) != d12.loc[str(record1.ID)]['REF']):
             record1.REF=Seq(str(record1.REF)).complement()
-        elif(record1.ALT != record2.ALT):
+        #redundant check
+        #if (str(record1.ALT) != d12.loc[str(record1.ID)]['ALT']):
             record1.ALT=Seq(str(record1.ALT)).complement()[1]
-            #lamba for fixing the N (None)
             record1.ALT=[N.replace("N",".") for N in record1.ALT]
-        else:
-            print("No variant was found in concordance")
-    #Writing it out
     OUT_VCF.write_record(record1)
-   
+
+  
 """ Clean up
 """
-
 OUT_VCF.close()
